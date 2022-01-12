@@ -13,6 +13,8 @@ public class MessageModel implements Serializable {
 
     private String receiver;
 
+    private byte[] videoData;
+
     private String content;
 
     private long time;

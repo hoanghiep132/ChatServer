@@ -1,6 +1,7 @@
 package com.hiepnh.chatserver.repository;
 
 import com.hiepnh.chatserver.entities.MessageEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -24,4 +25,10 @@ public interface MessageRepository extends JpaRepository<MessageEntity, Integer>
     List<MessageEntity> getMessageByPairUser(Integer user1Id, Integer user2Id, int offset, int limit);
 
 
+    @Query(value = " from MessageEntity msg where " +
+            " (msg.sender.id = ?1 or msg.sender.id = ?2) " +
+            " and " +
+            " (msg.receiver.id = ?1 or msg.receiver.id = ?2) " +
+            " order by msg.time DESC ")
+    List<MessageEntity> getMessageByPairUser2(Integer user1Id, Integer user2Id, Pageable pageable);
 }

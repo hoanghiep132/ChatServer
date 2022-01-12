@@ -33,7 +33,7 @@ public class ExecutorWorker extends ThreadBase{
 
     @Override
     protected void onException(Throwable th) {
-        System.err.println(th.getMessage());
+        logger.error("onException: ", th);
     }
 
     @Override
@@ -42,7 +42,7 @@ public class ExecutorWorker extends ThreadBase{
     }
 
     @Override
-    protected void action() throws Exception {
+    protected void action() {
         MessageChannel messageChannel = queue.poll();
         if(messageChannel == null){
             return;
@@ -65,7 +65,10 @@ public class ExecutorWorker extends ThreadBase{
             messageChannel.getChannel().writeAndFlush(messageChannel.getMessage());
         }else if(messageChannel.getMessage().getTag() == MessageType.TYPING){
             messageChannel.getChannel().writeAndFlush(messageChannel.getMessage());
+        }else if(messageChannel.getMessage().getTag() == MessageType.CALL_REQUEST){
+            messageChannel.getChannel().writeAndFlush(messageChannel.getMessage());
+        }else if(messageChannel.getMessage().getTag() == MessageType.CALL){
+            messageChannel.getChannel().writeAndFlush(messageChannel.getMessage());
         }
-
     }
 }

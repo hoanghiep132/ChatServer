@@ -59,7 +59,7 @@ public class PackageHandler {
     }
 
     private void transferVideo(TlvPackage tlvPackage, Channel channel){
-
+        onlineUserListHandler.transferVideo(tlvPackage, channel);
     }
 
     private void typing(String value){

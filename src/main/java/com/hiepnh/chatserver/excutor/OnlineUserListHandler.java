@@ -30,7 +30,7 @@ public class OnlineUserListHandler {
     private final GetConnection connection = new GetConnection();
 
     private final int MAX_TIME_OUT = 30000;
-    private final int SCHEDULER_TIME = 15;
+    private final int SCHEDULER_TIME = 5;
     private final int INIT_DELAY = 0;
     private final int MANAGER_THREAD_NUMBER = 1;
     private final int WORKER_THREAD_NUMBER = 10;
@@ -62,7 +62,6 @@ public class OnlineUserListHandler {
             worker.execute();
         }
     }
-
 
     public void addConnection(String username, Channel channel){
         synchronized (onlineUserMap){
@@ -163,7 +162,25 @@ public class OnlineUserListHandler {
     }
 
     public void transferVideo(TlvPackage tlvPackage, Channel channel){
+        MessageModel message = new MessageModel();
+        message.setTag(MessageType.CALL);
+        byte[] data= tlvPackage.getValues();
+        message.setVideoData(data);
 
+        MessageChannel messageChannel = new MessageChannel();
+        messageChannel.setMessage(message);
+        Optional<UserVideoPair> pairOptional = userVideoPairList.stream()
+                .filter(e -> e.getChannel2() == channel || e.getChannel1() == channel)
+                .findFirst();
+        if(!pairOptional.isPresent()){
+            return;
+        }
+        Channel partnerChannel = pairOptional.get().getPartnerChannel(channel);
+        if (partnerChannel == null){
+            return;
+        }
+        messageChannel.setChannel(partnerChannel);
+        messageQueue.offer(messageChannel);
     }
 
     public void createUserPair(Channel sender, String receiver) {
@@ -184,8 +201,7 @@ public class OnlineUserListHandler {
         }
         MessageModel message = new MessageModel();
         MessageChannel messageChannel = new MessageChannel();
-        //receiver đang hoạt động thì gửi request đến
-        // nếu ko hoạt động gửi thông báo lại cho sender
+
         if(check && senderUsername != null){
            userVideoPair.setStatus(Constant.UserPairStatus.REQUEST);
            userVideoPairList.add(userVideoPair);
@@ -201,29 +217,41 @@ public class OnlineUserListHandler {
     }
 
     public void acceptCallRequest(Channel channel){
+        logger.info("accept");
         Optional<UserVideoPair> pairOptional = userVideoPairList.stream()
                 .filter(e -> e.getChannel2() == channel).findFirst();
         if(!pairOptional.isPresent()){
             return;
         }
+        pairOptional.get().setStatus(Constant.UserPairStatus.RUNNING);
         MessageChannel messageChannel = new MessageChannel();
         messageChannel.setChannel(pairOptional.get().getChannel1());
         MessageModel messageModel = new MessageModel();
         messageModel.setTag(MessageType.CALL_ACCEPT);
+        messageChannel.setMessage(messageModel);
         messageQueue.offer(messageChannel);
     }
 
     public void rejectCallRequest(Channel channel){
+        logger.info("reject");
+        Iterator<UserVideoPair> iterator = userVideoPairList.iterator();
+        while (iterator.hasNext()){
+            UserVideoPair pair = iterator.next();
+            if(pair.getChannel2() == channel){
+                iterator.remove();
+                MessageChannel messageChannel = new MessageChannel();
+                messageChannel.setChannel(pair.getChannel1());
+                MessageModel messageModel = new MessageModel();
+                messageModel.setTag(MessageType.CALL_REJECT);
+                messageQueue.offer(messageChannel);
+            }
+        }
         Optional<UserVideoPair> pairOptional = userVideoPairList.stream()
                 .filter(e -> e.getChannel2() == channel).findFirst();
         if(!pairOptional.isPresent()){
             return;
         }
-        MessageChannel messageChannel = new MessageChannel();
-        messageChannel.setChannel(pairOptional.get().getChannel1());
-        MessageModel messageModel = new MessageModel();
-        messageModel.setTag(MessageType.CALL_REJECT);
-        messageQueue.offer(messageChannel);
+
     }
 
     private class BaseThread implements Runnable{

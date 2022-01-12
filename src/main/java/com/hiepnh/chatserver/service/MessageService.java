@@ -12,6 +12,8 @@ import com.hiepnh.chatserver.repository.UserRepository;
 import com.hiepnh.chatserver.repository.UserWithoutAvatarRepository;
 import com.hiepnh.chatserver.utils.AppUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -72,7 +74,10 @@ public class MessageService {
         int val1 = offset * limit;
         int val2 = val1 + limit - 1;
 
-        List<MessageEntity> messageEntities = messageRepository.getMessageByPairUser(user1Id, user2Id, val1, val2);
+        Pageable pageable = PageRequest.of(offset, limit);
+
+//        List<MessageEntity> messageEntities = messageRepository.getMessageByPairUser(user1Id, user2Id, val1, val2);
+        List<MessageEntity> messageEntities = messageRepository.getMessageByPairUser2(user1Id, user2Id, pageable);
         response.setRows(messageEntities);
         response.setSuccess();
         return response;

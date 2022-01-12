@@ -1,6 +1,7 @@
 package com.hiepnh.chatserver.netty_server.inbound;
 
 import com.hiepnh.chatserver.common.BufferConstant;
+import com.hiepnh.chatserver.common.MessageType;
 import com.hiepnh.chatserver.common.StateDecoder;
 import com.hiepnh.chatserver.excutor.PackageHandler;
 import com.hiepnh.chatserver.model.TlvPackage;
@@ -9,6 +10,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 public class RequestDecoderHandler extends ChannelInboundHandlerAdapter {
 
@@ -28,22 +30,30 @@ public class RequestDecoderHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
-        tmp = ctx.alloc().buffer(BufferConstant.KB);
+        tmp = ctx.alloc().buffer(BufferConstant.MB);
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
         ByteBuf buf = (ByteBuf) msg;
         tmp.writeBytes(buf);
         buf.release();
         int byteNumber = tmp.readableBytes();
         int start = 0;
-
         while (byteNumber > 0){
             switch (flag){
                 case StateDecoder.TAG_FLAG:
                     byte tagByte = tmp.getByte(start++);
                     tlvPackage.setTag(tagByte);
+                    if(tagByte == MessageType.CALL_ACCEPT || tagByte == MessageType.CALL_REJECT){
+                        tlvPackage.setLength(0);
+                        start += StateDecoder.LENGTH + StateDecoder.TAG_LENGTH;
+                        byteNumber -= (StateDecoder.LENGTH + StateDecoder.TAG_LENGTH);
+                        packageHandler.addPackage(tlvPackage, ctx.channel());
+                        tlvPackage.reset();
+                        flag = StateDecoder.TAG_FLAG;
+                        break;
+                    }
                     byteNumber -= StateDecoder.TAG_LENGTH;
                     flag = StateDecoder.LENGTH_FLAG;
                     break;
